@@ -1,0 +1,220 @@
+# k8s/catalog-service.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-config
+  namespace: retail-store
+data:
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "catalog"
+  MYSQL_USER: "catalog_user"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: catalog-secret
+  namespace: retail-store
+type: Opaque
+data:
+  MYSQL_PASSWORD: cGFzc3dvcmQ= # base64 encoded 'password'
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: retail-store
+  labels:
+    app: catalog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      containers:
+      - name: catalog
+        image: public.ecr.aws/aws-containers/retail-store-sample-catalog:0.4.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: catalog-config
+              key: MYSQL_HOST
+        - name: DB_READ_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: catalog-config
+              key: MYSQL_HOST
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: catalog-config
+              key: MYSQL_DATABASE
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: catalog-config
+              key: MYSQL_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: catalog-secret
+              key: MYSQL_PASSWORD
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: retail-store
+spec:
+  selector:
+    app: catalog
+  ports:
+  - port: 80
+    targetPort: 8080
+
+---
+# k8s/orders-service.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+  namespace: retail-store
+data:
+  DB_HOSTNAME: "postgresql"
+  DB_PORT: "5432"
+  DB_NAME: "orders"
+  DB_USER: "orders_user"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USERNAME: "user"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: orders-secret
+  namespace: retail-store
+type: Opaque
+data:
+  DB_PASSWORD: cGFzc3dvcmQ= # base64 encoded 'password'
+  RABBITMQ_PASSWORD: cGFzc3dvcmQ= # base64 encoded 'password'
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: retail-store
+  labels:
+    app: orders
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+    spec:
+      containers:
+      - name: orders
+        image: public.ecr.aws/aws-containers/retail-store-sample-orders:0.4.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_WRITER_URL
+          value: "jdbc:postgresql://$(DB_HOSTNAME):$(DB_PORT)/$(DB_NAME)"
+        - name: SPRING_DATASOURCE_READER_URL
+          value: "jdbc:postgresql://$(DB_HOSTNAME):$(DB_PORT)/$(DB_NAME)"
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: orders-config
+              key: DB_USER
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: orders-secret
+              key: DB_PASSWORD
+        - name: SPRING_RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: orders-config
+              key: RABBITMQ_HOST
+        - name: SPRING_RABBITMQ_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: orders-config
+              key: RABBITMQ_USERNAME
+        - name: SPRING_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: orders-secret
+              key: RABBITMQ_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: orders-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 45
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: retail-store
+spec:
+  selector:
+    app: orders
+  ports:
+  - port: 80
+    targetPort: 8080

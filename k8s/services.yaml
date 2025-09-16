@@ -1,0 +1,250 @@
+# k8s/carts-service.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carts-config
+  namespace: retail-store
+data:
+  DYNAMODB_ENDPOINT: "http://dynamodb-local:8000"
+  CARTS_DYNAMODB_TABLENAME: "carts"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carts
+  namespace: retail-store
+  labels:
+    app: carts
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: carts
+  template:
+    metadata:
+      labels:
+        app: carts
+    spec:
+      containers:
+      - name: carts
+        image: public.ecr.aws/aws-containers/retail-store-sample-cart:0.4.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "dynamodb"
+        - name: CARTS_DYNAMODB_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: carts-config
+              key: DYNAMODB_ENDPOINT
+        - name: CARTS_DYNAMODB_TABLENAME
+          valueFrom:
+            configMapKeyRef:
+              name: carts-config
+              key: CARTS_DYNAMODB_TABLENAME
+        - name: AWS_ACCESS_KEY_ID
+          value: "dummy"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "dummy"
+        - name: AWS_DEFAULT_REGION
+          value: "us-west-2"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 45
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  namespace: retail-store
+spec:
+  selector:
+    app: carts
+  ports:
+  - port: 80
+    targetPort: 8080
+
+---
+# k8s/ui-service.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-config
+  namespace: retail-store
+data:
+  ENDPOINTS_CATALOG: "http://catalog"
+  ENDPOINTS_CARTS: "http://carts"
+  ENDPOINTS_ORDERS: "http://orders"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: retail-store
+  labels:
+    app: ui
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      containers:
+      - name: ui
+        image: public.ecr.aws/aws-containers/retail-store-sample-ui:0.4.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENDPOINTS_CATALOG
+          valueFrom:
+            configMapKeyRef:
+              name: ui-config
+              key: ENDPOINTS_CATALOG
+        - name: ENDPOINTS_CARTS
+          valueFrom:
+            configMapKeyRef:
+              name: ui-config
+              key: ENDPOINTS_CARTS
+        - name: ENDPOINTS_ORDERS
+          valueFrom:
+            configMapKeyRef:
+              name: ui-config
+              key: ENDPOINTS_ORDERS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: retail-store
+  labels:
+    app: ui
+spec:
+  type: LoadBalancer
+  selector:
+    app: ui
+  ports:
+  - port: 80
+    targetPort: 8080
+
+---
+# k8s/checkout-service.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-config
+  namespace: retail-store
+data:
+  ENDPOINTS_ORDERS: "http://orders"
+  REDIS_URL: "redis://redis:6379"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: retail-store
+  labels:
+    app: checkout
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+      - name: checkout
+        image: public.ecr.aws/aws-containers/retail-store-sample-checkout:0.4.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENDPOINTS_ORDERS
+          valueFrom:
+            configMapKeyRef:
+              name: checkout-config
+              key: ENDPOINTS_ORDERS
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: checkout-config
+              key: REDIS_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: retail-store
+spec:
+  selector:
+    app: checkout
+  ports:
+  - port: 80
+    targetPort: 8080

@@ -435,4 +435,4 @@ Live Application: http://k8s-retailst-ui-510b8bb15d-66e01a92f09e9e2c.elb.us-east
 
 
 **AUTOR** OFONIME OFFONG
-CLOUD ENGINEER
+(CLOUD ENGINEER)

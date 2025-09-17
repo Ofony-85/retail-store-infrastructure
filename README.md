@@ -60,7 +60,7 @@ Project Bedrock is a comprehensive cloud infrastructure project that deploys a m
 ### Infrastructure Components
 
 - **VPC**: Custom VPC with public/private subnets across 2 availability zones
-- **EKS Cluster**: Managed Kubernetes cluster (v1.29) with auto-scaling worker nodes
+- **EKS Cluster**: Managed Kubernetes cluster (v1.32) with auto-scaling worker nodes
 - **Security**: Properly configured security groups and IAM roles
 - **Networking**: Internet Gateway, NAT Gateways, and Application Load Balancer
 
@@ -434,5 +434,5 @@ Live Application: http://k8s-retailst-ui-510b8bb15d-66e01a92f09e9e2c.elb.us-east
 *Built with Infrastructure as Code principles demonstrating enterprise-grade DevOps engineering practices*# retail-store-infrastructure
 
 
-**AUTOR** OFONIME OFFONG
+**AUThOR** OFONIME OFFONG
 (CLOUD ENGINEER)

@@ -13,11 +13,10 @@ resource "aws_iam_access_key" "developer" {
   user = aws_iam_user.developer.name
 }
 
-# Developer IAM Policy for EKS Read-Only Access
 resource "aws_iam_policy" "developer_eks_readonly" {
-  name        = "${var.project_name}-developer-eks-readonly"
+  name        = "${var.project_name}-developer-enhanced-readonly"
   path        = "/"
-  description = "Read-only access to EKS cluster resources"
+  description = "Enhanced read-only access to EKS cluster and AWS resources"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -32,12 +31,13 @@ resource "aws_iam_policy" "developer_eks_readonly" {
           "eks:DescribeUpdate",
           "eks:ListUpdates",
           "eks:DescribeFargateProfile",
-          "eks:ListFargateProfiles"
+          "eks:ListFargateProfiles",
+          "eks:DescribeAddon",
+          "eks:ListAddons",
+          "eks:DescribeIdentityProviderConfig",
+          "eks:ListIdentityProviderConfigs"
         ]
-        Resource = [
-          aws_eks_cluster.main.arn,
-          "${aws_eks_cluster.main.arn}/*"
-        ]
+        Resource = "*"
       },
       {
         Effect = "Allow"
@@ -45,7 +45,76 @@ resource "aws_iam_policy" "developer_eks_readonly" {
           "ec2:DescribeInstances",
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeSubnets",
-          "ec2:DescribeVpcs"
+          "ec2:DescribeVpcs",
+          "ec2:DescribeInternetGateways",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeNatGateways",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeSnapshots",
+          "ec2:DescribeKeyPairs",
+          "ec2:DescribeImages",
+          "ec2:DescribeRegions",
+          "ec2:DescribeAvailabilityZones"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetPolicy",
+          "iam:GetUser",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedUserPolicies",
+          "iam:ListUserPolicies",
+          "iam:GetRolePolicy",
+          "iam:GetUserPolicy",
+          "iam:ListUsers",
+          "iam:ListRoles",
+          "iam:ListPolicies"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+          "elasticloadbalancing:DescribeListeners",
+          "elasticloadbalancing:DescribeRules",
+          "elasticloadbalancing:DescribeLoadBalancerAttributes",
+          "elasticloadbalancing:DescribeTargetGroupAttributes"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudformation:DescribeStacks",
+          "cloudformation:DescribeStackResources",
+          "cloudformation:ListStacks"
         ]
         Resource = "*"
       }
@@ -137,7 +206,7 @@ resource "kubernetes_config_map" "aws_auth" {
         groups   = ["system:bootstrappers", "system:nodes"]
       }
     ])
-    
+
     mapUsers = yamlencode([
       {
         userarn  = aws_iam_user.developer.arn
@@ -149,3 +218,5 @@ resource "kubernetes_config_map" "aws_auth" {
 
   depends_on = [aws_eks_cluster.main]
 }
+
+

@@ -1,3 +1,6 @@
+ develop
+# retail-store-infrastructure# Staging Environment
+
 # Project Bedrock - Production-Grade EKS Deployment
 
 **Live Application**: http://k8s-retailst-ui-510b8bb15d-66e01a92f09e9e2c.elb.us-east-1.amazonaws.com
@@ -434,5 +437,5 @@ Live Application: http://k8s-retailst-ui-510b8bb15d-66e01a92f09e9e2c.elb.us-east
 *Built with Infrastructure as Code principles demonstrating enterprise-grade DevOps engineering practices*# retail-store-infrastructure
 
 
-**AUThOR** OFONIME OFFONG
-(CLOUD ENGINEER)
+**AUTHOR** OFONIME OFFONG
+(CLOUD ENGINEER) main

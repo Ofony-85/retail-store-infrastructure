@@ -14,8 +14,6 @@ resource "aws_iam_role" "eks_cluster" {
       }
     ]
   })
-
-  # tags attribute removed as it's not supported in aws_eks_node_group
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
@@ -138,7 +136,7 @@ resource "aws_eks_cluster" "main" {
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   depends_on = [
-    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_cluster_policy
   ]
 
   tags = local.common_tags
@@ -161,31 +159,54 @@ resource "aws_eks_node_group" "main" {
   }
 
   depends_on = [
-    aws_eks_cluster.main
+    aws_eks_cluster.main,
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_container_registry_policy
   ]
 
   tags = local.common_tags
 }
-# Configure kubernetes provider
+
+# Data sources for EKS cluster and authentication
 data "aws_eks_cluster" "cluster" {
-  name = aws_eks_cluster.main.id
+  name = aws_eks_cluster.main.name
 }
 
 data "aws_eks_cluster_auth" "cluster" {
-  name = aws_eks_cluster.main.id
+  name = aws_eks_cluster.main.name
 }
 
+# Kubernetes provider (no depends_on here!)
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
   token                  = data.aws_eks_cluster_auth.cluster.token
 }
 
+# Helm provider (no depends_on here!)
 provider "helm" {
   kubernetes {
     host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
     token                  = data.aws_eks_cluster_auth.cluster.token
   }
 }
 
+resource "helm_release" "aws_load_balancer_controller" {
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  namespace  = "kube-system"
+
+  set {
+    name  = "clusterName"
+    value = aws_eks_cluster.main.name
+  }
+
+  depends_on = [
+    aws_eks_cluster.main,
+    aws_eks_node_group.main,
+    kubernetes_config_map.aws_auth
+  ]
+}

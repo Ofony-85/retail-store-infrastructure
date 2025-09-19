@@ -68,8 +68,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
-    Name = "${var.project_name}-public-subnet-${count.index + 1}"
-    Type = "Public"
+    Name                     = "${var.project_name}-public-subnet-${count.index + 1}"
+    Type                     = "Public"
     "kubernetes.io/role/elb" = "1"
   })
 }
@@ -83,8 +83,8 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = merge(local.common_tags, {
-    Name = "${var.project_name}-private-subnet-${count.index + 1}"
-    Type = "Private"
+    Name                              = "${var.project_name}-private-subnet-${count.index + 1}"
+    Type                              = "Private"
     "kubernetes.io/role/internal-elb" = "1"
   })
 }
@@ -93,7 +93,7 @@ resource "aws_subnet" "private" {
 resource "aws_eip" "nat" {
   count = 2
 
-  domain = "vpc"
+  domain     = "vpc"
   depends_on = [aws_internet_gateway.main]
 
   tags = merge(local.common_tags, {
